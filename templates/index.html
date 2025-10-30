@@ -1,66 +1,60 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Screenshot to Code</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8">
+  <title>Screenshot to Code</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="container mt-5">
-        <h1 class="text-center">Screenshot to Code</h1>
-        <div class="row justify-content-center mt-3">
-            <div class="col-md-6">
-                <form id="uploadForm" enctype="multipart/form-data">
-                    <div class="form-group">
-                        <label for="screenshot">Upload Screenshot:</label>
-                        <div class="drag-drop border rounded p-4 text-center">
-                            <input type="file" class="form-control-file" id="screenshot" accept="image/*" hidden>
-                            <p>Drag and drop your screenshot here, or click to select a file.</p>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="language">Select Target Language:</label>
-                        <select class="form-control" id="language">
-                            <option value="python">Python</option>
-                            <option value="javascript">JavaScript</option>
-                            <!-- Add more options for other languages -->
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Generate Code</button>
-                </form>
-            </div>
-        </div>
-        <div class="row justify-content-center mt-5">
-            <div class="col-md-6">
-                <div id="result" class="alert d-none" role="alert"></div>
-                <pre id="output" class="border rounded p-4 d-none"></pre>
-            </div>
-        </div>
-    </div>
+  <h2>Upload Screenshot</h2>
 
-    <!-- Bootstrap JS (optional, for dropdowns, modals, etc.) -->
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  <input type="file" id="fileInput">
+  <button id="generateBtn">Generate Code</button>
 
-    <!-- Your custom JavaScript -->
-    <script>
-        // JavaScript code for handling form submission
-        document.getElementById('uploadForm').addEventListener('submit', function(event) {
-            event.preventDefault(); // Prevent the default form submission
-            var formData = new FormData(this);
+  <h3>Generated HTML</h3>
+  <pre id="output"></pre>
 
-            // You can add additional logic here to handle form submission
-            // For example, you can send the form data to the backend for processing
-            // and display the result to the user
+  <h3>Preview</h3>
+  <div id="preview"></div>
 
-            // For now, let's just display a message
-            var language = document.getElementById('language').value;
-            document.getElementById('result').innerText = 'Generating code in ' + language + '...';
-            document.getElementById('result').classList.remove('d-none');
-        });
-    </script>
+  <script>
+
+    const fileInput = document.getElementById('fileInput');
+    const generateBtn = document.getElementById('generateBtn');
+    const output = document.getElementById('output');
+    const preview = document.getElementById('preview');
+
+    generateBtn.onclick = async () => {
+        const file = fileInput.files[0];
+        if (!file) {
+        alert('Please select an image first!');
+        return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const res = await fetch('/generate', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (data.html_code) {
+        output.textContent = data.html_code;
+        preview.innerHTML = data.html_code;
+
+        // Create download link
+        const blob = new Blob([data.html_code], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'generated_ui.html';
+        link.textContent = '💾 Download HTML File';
+        link.style.display = 'block';
+        link.style.marginTop = '10px';
+        document.body.appendChild(link);
+        } else {
+        alert('Error: ' + data.error);
+        }
+    };
+  </script>
 </body>
 </html>

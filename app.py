@@ -1,50 +1,74 @@
-from flask import Flask, request, jsonify
-import base64
+from flask import Flask, render_template, request, jsonify
+import cv2
+import numpy as np
+import easyocr
+import os
 
 app = Flask(__name__)
+UPLOAD_FOLDER = 'static/uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Placeholder function for machine learning integration
-def recognize_ui_elements(screenshot_data):
-    # Placeholder logic to recognize UI elements using machine learning
-    # Replace this with your actual machine learning model integration
-    # This function should return a list of recognized UI elements
-    return ['button', 'textfield', 'label']  # Example: Recognized UI elements
+reader = easyocr.Reader(['en'])
 
-# Placeholder function for generating code based on UI elements
-def generate_code(ui_elements, language):
-    # Placeholder logic to generate code based on recognized UI elements
-    # Replace this with your actual code generation logic
-    # This function should return the generated HTML/CSS code
-    html_code = "<!DOCTYPE html><html><head><title>Generated HTML</title></head><body>"
-    for element in ui_elements:
-        if element == 'button':
-            html_code += "<button>Button</button>"
-        elif element == 'textfield':
-            html_code += "<input type='text' placeholder='Text Field'>"
-        elif element == 'label':
-            html_code += "<label>Label</label>"
-        # Add more cases for other UI elements as needed
-    html_code += "</body></html>"
-    return html_code
 
-@app.route('/generate_code', methods=['POST'])
-def generate_code_endpoint():
-    # Handle form submission here
-    # Extract uploaded screenshot and selected language
-    screenshot_data = request.form['screenshot']
-    language = request.form['language']
+def process_ui_layout(image_path):
+    # Load the image
+    img = cv2.imread(image_path)
 
-    # Decode base64 encoded screenshot data
-    screenshot_bytes = base64.b64decode(screenshot_data)
+    # Convert to gray for detection
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
 
-    # Placeholder: Integrate machine learning to recognize UI elements
-    recognized_ui_elements = recognize_ui_elements(screenshot_bytes)
+    # Detect edges
+    edges = cv2.Canny(blurred, 30, 150)
 
-    # Generate code based on recognized UI elements
-    generated_code = generate_code(recognized_ui_elements, language)
+    # Find contours
+    contours, _ = cv2.findContours(
+        edges.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    # Return the generated code as JSON response
-    return jsonify({'code': generated_code})
+    html_output = "<div class='generated-box'>\n"
+
+    for cnt in contours:
+        x, y, w, h = cv2.boundingRect(cnt)
+
+        # Skip small elements
+        if w < 40 or h < 20:
+            continue
+
+        roi = img[y:y+h, x:x+w]
+        text = reader.readtext(roi, detail=0)
+
+        # Use text if detected, else describe as a box
+        if text:
+            html_output += f"  <p>{' '.join(text)}</p>\n"
+        else:
+            html_output += f"  <div style='width:{w}px; height:{h}px; border:1px solid #aaa;'></div>\n"
+
+    html_output += "</div>"
+    return html_output
+
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+
+@app.route('/generate', methods=['POST'])
+def generate_code():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'})
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'Empty filename'})
+
+    file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+    file.save(file_path)
+
+    html_code = process_ui_layout(file_path)
+
+    return jsonify({'html_code': html_code})
+
 
 if __name__ == '__main__':
     app.run(debug=True)
