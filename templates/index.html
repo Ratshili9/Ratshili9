@@ -1,60 +1,33 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Screenshot to Code</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Screenshot to Code</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
-  <h2>Upload Screenshot</h2>
+    <div class="container">
+        <h1>🖼️ Screenshot to Code Converter</h1>
+        
+        <div class="upload-section">
+            <input type="file" id="fileInput" accept="image/*">
+            <button onclick="uploadImage()">Convert to HTML</button>
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">
+            <p>Processing image... Please wait.</p>
+        </div>
+        
+        <div id="result" class="result-section" style="display: none;">
+            <h3>Generated HTML:</h3>
+            <pre id="htmlOutput"></pre>
+            
+            <h3>Preview:</h3>
+            <div id="preview"></div>
+        </div>
+        
+        <div id="error" class="error" style="display: none;"></div>
+    </div>
 
-  <input type="file" id="fileInput">
-  <button id="generateBtn">Generate Code</button>
-
-  <h3>Generated HTML</h3>
-  <pre id="output"></pre>
-
-  <h3>Preview</h3>
-  <div id="preview"></div>
-
-  <script>
-
-    const fileInput = document.getElementById('fileInput');
-    const generateBtn = document.getElementById('generateBtn');
-    const output = document.getElementById('output');
-    const preview = document.getElementById('preview');
-
-    generateBtn.onclick = async () => {
-        const file = fileInput.files[0];
-        if (!file) {
-        alert('Please select an image first!');
-        return;
-        }
-
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const res = await fetch('/generate', { method: 'POST', body: formData });
-        const data = await res.json();
-
-        if (data.html_code) {
-        output.textContent = data.html_code;
-        preview.innerHTML = data.html_code;
-
-        // Create download link
-        const blob = new Blob([data.html_code], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'generated_ui.html';
-        link.textContent = '💾 Download HTML File';
-        link.style.display = 'block';
-        link.style.marginTop = '10px';
-        document.body.appendChild(link);
-        } else {
-        alert('Error: ' + data.error);
-        }
-    };
-  </script>
+    <script src="{{ url_for('static', filename='js/upload.js') }}"></script>
 </body>
 </html>
